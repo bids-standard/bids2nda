@@ -74,8 +74,9 @@ def dict_append(d, key, value):
 
 def run(args):
 
-    guid_mapping = pd.read_csv(args.guid_mapping, sep="\t", header=0,
-                               dtype={"participant_id": str})
+    print([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
+
+    guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
 
     suffix_to_scan_type = {"dwi": "MR diffusion",
                            "bold": "fMRI",
@@ -113,6 +114,7 @@ def run(args):
         metadata = get_metadata_for_nifti(args.bids_directory, file)
 
         bids_subject_id = os.path.split(file)[-1].split("_")[0][4:]
+        dict_append(image03_dict, 'subjectkey', guid_mapping[bids_subject_id])
         dict_append(image03_dict, 'src_subject_id', bids_subject_id)
 
         dict_append(image03_dict, 'image_file', file)
@@ -126,6 +128,7 @@ def run(args):
         dict_append(image03_dict, 'scan_type', suffix_to_scan_type[suffix])
         dict_append(image03_dict, 'scan_object', "Live")
         dict_append(image03_dict, 'image_file_format', "NIFTI")
+        dict_append(image03_dict, 'image_modality', "MRI")
         dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", ""))
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
@@ -178,14 +181,11 @@ def run(args):
 
 
     image03_df = pd.DataFrame(image03_dict)
-    image03_df = pd.merge(how="left", left=image03_df, left_on="src_subject_id", right=guid_mapping,
-                          right_on="participant_id")
-
-    image03_df.drop('participant_id', axis=1, inplace=True)
-    image03_df.rename(columns={'GUID': 'subjectkey'}, inplace=True)
     print(image03_df)
 
-    image03_df.to_csv(os.path.join(args.output_directory, "image03.txt"), sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
+        out_fp.write('"image"\t"3"\n')
+        image03_df.to_csv(out_fp, sep="\t", index=False, quoting=csv.QUOTE_ALL)
 
 def main():
     class MyParser(argparse.ArgumentParser):
@@ -204,7 +204,7 @@ def main():
         metavar="BIDS_DIRECTORY")
     parser.add_argument(
         "guid_mapping",
-        help="Path to a Tab Separated Value (TSV) file with participant_id to GUID mapping. You will need to use the "
+        help="Path to a text file with participant_id to GUID mapping. You will need to use the "
              "GUID Tool (https://ndar.nih.gov/contribute.html) to generate GUIDs for your participants.",
         metavar="GUID_MAPPING")
     parser.add_argument(
