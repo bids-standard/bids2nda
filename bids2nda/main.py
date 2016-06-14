@@ -11,7 +11,7 @@ from glob import glob
 import os
 import sys
 
-import nibabel
+import nibabel as nb
 import json
 import pandas as pd
 
@@ -77,11 +77,105 @@ def run(args):
     guid_mapping = pd.read_csv(args.guid_mapping, sep="\t", header=0,
                                dtype={"participant_id": str})
 
+    suffix_to_scan_type = {"dwi": "MR diffusion",
+                           "bold": "fMRI",
+                           #""MR structural(MPRAGE)",
+                           "T1w": "MR structural(T1)",
+                           "PD": "MR structural(PD)",
+                           #"MR structural(FSPGR)",
+                           "T2w": "MR structural(T2)",
+                           #PET;
+                            #ASL;
+                            #microscopy;
+                            #MR structural(PD, T2);
+                            #MR structural(B0 map);
+                            #MR structural(B1 map);
+                            #single - shell DTI;
+                            #multi - shell DTI;
+                           "epi": "Field Map",
+                           "phase1": "Field Map",
+                           "phase2": "Field Map",
+                           "phasediff": "Field Map",
+                           "magnitude1": "Field Map",
+                           "magnitude2": "Field Map",
+                           "fieldmap": "Field Map"
+                           #X - Ray
+                           }
+
+    units_dict = {"mm": "Millimeters",
+                  "sec": "Seconds",
+                  "msec": "Miliseconds"}
+
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
             glob(os.path.join(args.bids_directory, "sub-*", "ses-*", "*", "sub-*_ses-*.nii.gz")):
+
+        metadata = get_metadata_for_nifti(args.bids_directory, file)
+
         bids_subject_id = os.path.split(file)[-1].split("_")[0][4:]
         dict_append(image03_dict, 'src_subject_id', bids_subject_id)
+
+        dict_append(image03_dict, 'image_file', file)
+
+        suffix = file.split("_")[-1].split(".")[0]
+        if suffix == "bold":
+            description = suffix + " " + metadata["TaskName"]
+        else:
+            description = suffix
+        dict_append(image03_dict, 'image_description', description)
+        dict_append(image03_dict, 'scan_type', suffix_to_scan_type[suffix])
+        dict_append(image03_dict, 'scan_object', "Live")
+        dict_append(image03_dict, 'image_file_format', "NIFTI")
+        dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", ""))
+        dict_append(image03_dict, 'transformation_performed', 'Yes')
+        dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
+
+        "image_extent1	image_extent2	image_extent3	image_extent4	extent4_type"
+        nii = nb.load(file)
+        dict_append(image03_dict, 'image_num_dimensions', len(nii.shape))
+        dict_append(image03_dict, 'image_extent1', nii.shape[0])
+        dict_append(image03_dict, 'image_extent2', nii.shape[1])
+        dict_append(image03_dict, 'image_extent3', nii.shape[2])
+        if len(nii.shape) > 3:
+            image_extent4 = nii.shape[3]
+        else:
+            image_extent4 = ""
+
+        dict_append(image03_dict, 'image_extent4', image_extent4)
+        if suffix == "bold":
+            extent4_type = "time"
+        else:
+            extent4_type = ""
+        dict_append(image03_dict, 'extent4_type', extent4_type)
+
+        "image_resolution1	image_resolution2	image_resolution3	image_resolution4"
+        dict_append(image03_dict, 'image_resolution1', nii.header.get_zooms()[0])
+        dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
+        dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
+        if len(nii.shape) > 3:
+            image_resolution4 = nii.header.get_zooms()[3]
+        else:
+            image_resolution4 = ""
+        dict_append(image03_dict, 'image_resolution4', image_resolution4)
+
+        "image_unit1 image_unit2	image_unit3	image_unit4"
+        dict_append(image03_dict, 'image_unit1', units_dict[nii.header.get_xyzt_units()[0]])
+        dict_append(image03_dict, 'image_unit2', units_dict[nii.header.get_xyzt_units()[0]])
+        dict_append(image03_dict, 'image_unit3', units_dict[nii.header.get_xyzt_units()[0]])
+        if len(nii.shape) > 3:
+            image_unit4 = units_dict[nii.header.get_xyzt_units()[1]]
+        else:
+            image_unit4 = ""
+        dict_append(image03_dict, 'image_unit4', image_unit4)
+
+        if file.split(os.sep)[-1].split("_")[1].startswith("ses"):
+            visit = file.split(os.sep)[-1].split("_")[1][4:]
+        else:
+            visit = ""
+
+        dict_append(image03_dict, 'visit', visit)
+
+
 
     image03_df = pd.DataFrame(image03_dict)
     image03_df = pd.merge(how="left", left=image03_df, left_on="src_subject_id", right=guid_mapping,
