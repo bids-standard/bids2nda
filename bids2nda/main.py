@@ -65,20 +65,25 @@ def get_metadata_for_nifti(bids_root, path):
     return merged_param_dict
 
 
+def dict_append(d, key, value):
+    if key in d:
+        d[key].append(value)
+    else:
+        d[key] = [value, ]
+
+
 def run(args):
 
     guid_mapping = pd.read_csv(args.guid_mapping, sep="\t", header=0,
                                dtype={"participant_id": str})
 
-    image03_df = pd.DataFrame()
-
-    bids_subject_ids = []
+    image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
             glob(os.path.join(args.bids_directory, "sub-*", "ses-*", "*", "sub-*_ses-*.nii.gz")):
         bids_subject_id = os.path.split(file)[-1].split("_")[0][4:]
-        bids_subject_ids.append(bids_subject_id)
+        dict_append(image03_dict, 'src_subject_id', bids_subject_id)
 
-    image03_df['src_subject_id'] = bids_subject_ids
+    image03_df = pd.DataFrame(image03_dict)
     image03_df = pd.merge(how="left", left=image03_df, left_on="src_subject_id", right=guid_mapping,
                           right_on="participant_id")
 
