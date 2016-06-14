@@ -81,10 +81,10 @@ def run(args):
     suffix_to_scan_type = {"dwi": "MR diffusion",
                            "bold": "fMRI",
                            #""MR structural(MPRAGE)",
-                           "T1w": "MR structural(T1)",
-                           "PD": "MR structural(PD)",
+                           "T1w": "MR structural (T1)",
+                           "PD": "MR structural (PD)",
                            #"MR structural(FSPGR)",
-                           "T2w": "MR structural(T2)",
+                           "T2w": "MR structural (T2)",
                            #PET;
                             #ASL;
                             #microscopy;
@@ -105,7 +105,9 @@ def run(args):
 
     units_dict = {"mm": "Millimeters",
                   "sec": "Seconds",
-                  "msec": "Miliseconds"}
+                  "msec": "Milliseconds"}
+
+    participants_df = pd.read_csv(os.path.join(args.bids_directory, "participants.tsv"), header=0, sep="\t")
 
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
@@ -116,6 +118,35 @@ def run(args):
         bids_subject_id = os.path.split(file)[-1].split("_")[0][4:]
         dict_append(image03_dict, 'subjectkey', guid_mapping[bids_subject_id])
         dict_append(image03_dict, 'src_subject_id', bids_subject_id)
+
+        sub = file.split("sub-")[-1].split("_")[0]
+        if "ses-" in file:
+            ses = file.split("ses-")[-1].split("_")[0]
+            scans_file = (os.path.join(args.bids_directory, "sub-" + sub, "ses-" + ses, "sub-" + sub + "_ses-" + ses + "_scans.tsv"))
+        else:
+            scans_file = (os.path.join(args.bids_directory, "sub-" + sub, "sub-" + sub + "_scans.tsv"))
+
+        if os.path.exists(scans_file):
+            scans_df = pd.read_csv(scans_file, header=0, sep="\t")
+        else:
+            print("%s file not found - information about scan date required by NDA could not be found." % scans_file)
+            sys.exit(-1)
+
+        print(scans_df)
+        for (_, row) in scans_df.iterrows():
+            if file.endswith(row["filename"].replace("/", os.sep)):
+                date = row.acq_time
+                break
+
+        sdate = date.split("-")
+        ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
+        dict_append(image03_dict, 'interview_date', ndar_date)
+
+        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0],0))
+        dict_append(image03_dict, 'interview_age', interview_age)
+
+        sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
+        dict_append(image03_dict, 'gender', sex)
 
         dict_append(image03_dict, 'image_file', file)
 
@@ -129,7 +160,6 @@ def run(args):
         dict_append(image03_dict, 'scan_object', "Live")
         dict_append(image03_dict, 'image_file_format', "NIFTI")
         dict_append(image03_dict, 'image_modality', "MRI")
-        dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", ""))
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
@@ -147,6 +177,8 @@ def run(args):
         dict_append(image03_dict, 'image_extent4', image_extent4)
         if suffix == "bold":
             extent4_type = "time"
+        elif suffix == "dwi":
+            extent4_type = "diffusion weighting"
         else:
             extent4_type = ""
         dict_append(image03_dict, 'extent4_type', extent4_type)
@@ -167,8 +199,14 @@ def run(args):
         dict_append(image03_dict, 'image_unit3', units_dict[nii.header.get_xyzt_units()[0]])
         if len(nii.shape) > 3:
             image_unit4 = units_dict[nii.header.get_xyzt_units()[1]]
+            if image_unit4 == "Milliseconds":
+                TR = nii.header.get_zooms()[3]/1000.
+            else:
+                TR = nii.header.get_zooms()[3]
+            dict_append(image03_dict, 'mri_repetition_time_pd', TR)
         else:
             image_unit4 = ""
+            dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", 0))
         dict_append(image03_dict, 'image_unit4', image_unit4)
 
         if file.split(os.sep)[-1].split("_")[1].startswith("ses"):
@@ -181,7 +219,6 @@ def run(args):
 
 
     image03_df = pd.DataFrame(image03_dict)
-    print(image03_df)
 
     with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
         out_fp.write('"image"\t"3"\n')
