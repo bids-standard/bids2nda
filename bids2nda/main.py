@@ -6,6 +6,7 @@ from __future__ import print_function
 import argparse
 import csv
 import logging
+import zipfile
 from collections import OrderedDict
 from glob import glob
 import os
@@ -22,6 +23,7 @@ from shutil import copy
 
 def get_metadata_for_nifti(bids_root, path):
 
+    #TODO support .nii
     sidecarJSON = path.replace(".nii.gz", ".json")
 
     pathComponents = os.path.split(sidecarJSON)
@@ -73,8 +75,6 @@ def dict_append(d, key, value):
 
 
 def run(args):
-
-    print([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
 
@@ -131,8 +131,6 @@ def run(args):
         else:
             print("%s file not found - information about scan date required by NDA could not be found." % scans_file)
             sys.exit(-1)
-
-        print(scans_df)
         for (_, row) in scans_df.iterrows():
             if file.endswith(row["filename"].replace("/", os.sep)):
                 date = row.acq_time
@@ -213,6 +211,51 @@ def run(args):
 
         dict_append(image03_dict, 'visit', visit)
 
+        if len(metadata) > 0 or suffix in ['bold', 'dwi']:
+            desc = ""
+            _, fname = os.path.split(file)
+            zip_name = fname.split(".")[0] + ".metadata.zip"
+            with zipfile.ZipFile(os.path.join(args.output_directory, zip_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
+
+                zipf.writestr(fname.replace(".nii.gz", ".json"), json.dumps(metadata, indent=4, sort_keys=True))
+                if suffix == "bold":
+                    #TODO write a more robust function for finding those files
+                    events_file = file.split("_bold")[0] + "_events.tsv"
+                    arch_name = os.path.split(events_file)[1]
+                    if not os.path.exists(events_file):
+                        task_name = file.split("_task-")[1].split("_")[0]
+                        events_file = os.path.join(args.bids_directory, "task-" + task_name + "_events.tsv")
+
+                    if os.path.exists(events_file):
+                        zipf.write(events_file, arch_name)
+                        desc = "(stimuli/response timing)"
+
+                if suffix == "dwi":
+                    # TODO write a more robust function for finding those files
+                    bvec_file = file.split("_dwi")[0] + "_dwi.bvec"
+                    arch_name = os.path.split(bvec_file)[1]
+                    if not os.path.exists(bvec_file):
+                        bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
+
+                    if os.path.exists(bvec_file):
+                        zipf.write(bvec_file, arch_name)
+
+                    bval_file = file.split("_dwi")[0] + "_dwi.bval"
+                    arch_name = os.path.split(bval_file)[1]
+                    if not os.path.exists(bval_file):
+                        bval_file = os.path.join(args.bids_directory, "dwi.bval")
+
+                    if os.path.exists(bval_file):
+                        zipf.write(bval_file, arch_name)
+                        desc = "(diffusion gradient information)"
+
+            dict_append(image03_dict, 'data_file2', os.path.join(args.output_directory, zip_name))
+            dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata files (%s) using file "
+                                                                "formats and field definitions from the Brain Imaging "
+                                                                "Data Structure (http://bids.neuroimaging.io)" % desc)
+        else:
+            dict_append(image03_dict, 'data_file2', "")
+            dict_append(image03_dict, 'data_file2_type', "")
 
 
     image03_df = pd.DataFrame(image03_dict)
