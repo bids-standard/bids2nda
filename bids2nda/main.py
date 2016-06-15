@@ -142,7 +142,7 @@ def run(args):
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0],0))
+        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0], 0))
         dict_append(image03_dict, 'interview_age', interview_age)
 
         sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
@@ -163,7 +163,6 @@ def run(args):
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
-        "image_extent1	image_extent2	image_extent3	image_extent4	extent4_type"
         nii = nb.load(file)
         dict_append(image03_dict, 'image_num_dimensions', len(nii.shape))
         dict_append(image03_dict, 'image_extent1', nii.shape[0])
@@ -183,7 +182,6 @@ def run(args):
             extent4_type = ""
         dict_append(image03_dict, 'extent4_type', extent4_type)
 
-        "image_resolution1	image_resolution2	image_resolution3	image_resolution4"
         dict_append(image03_dict, 'image_resolution1', nii.header.get_zooms()[0])
         dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
@@ -193,7 +191,6 @@ def run(args):
             image_resolution4 = ""
         dict_append(image03_dict, 'image_resolution4', image_resolution4)
 
-        "image_unit1 image_unit2	image_unit3	image_unit4"
         dict_append(image03_dict, 'image_unit1', units_dict[nii.header.get_xyzt_units()[0]])
         dict_append(image03_dict, 'image_unit2', units_dict[nii.header.get_xyzt_units()[0]])
         dict_append(image03_dict, 'image_unit3', units_dict[nii.header.get_xyzt_units()[0]])
