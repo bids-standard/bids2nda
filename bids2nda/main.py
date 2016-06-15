@@ -158,6 +158,13 @@ def run(args):
         dict_append(image03_dict, 'scan_object', "Live")
         dict_append(image03_dict, 'image_file_format', "NIFTI")
         dict_append(image03_dict, 'image_modality', "MRI")
+        dict_append(image03_dict, 'scanner_manufacturer_pd', metadata.get("Manufacturer", ""))
+        dict_append(image03_dict, 'scanner_type_pd', metadata.get("ManufacturersModelName", ""))
+        dict_append(image03_dict, 'scanner_software_versions_pd', metadata.get("HardcopyDeviceSoftwareVersion", ""))
+        dict_append(image03_dict, 'magnetic_field_strength', metadata.get("MagneticFieldStrength", ""))
+        dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
+        dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
+        dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
@@ -212,7 +219,6 @@ def run(args):
         dict_append(image03_dict, 'visit', visit)
 
         if len(metadata) > 0 or suffix in ['bold', 'dwi']:
-            desc = ""
             _, fname = os.path.split(file)
             zip_name = fname.split(".")[0] + ".metadata.zip"
             with zipfile.ZipFile(os.path.join(args.output_directory, zip_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -228,7 +234,6 @@ def run(args):
 
                     if os.path.exists(events_file):
                         zipf.write(events_file, arch_name)
-                        desc = "(stimuli/response timing)"
 
                 if suffix == "dwi":
                     # TODO write a more robust function for finding those files
@@ -247,12 +252,10 @@ def run(args):
 
                     if os.path.exists(bval_file):
                         zipf.write(bval_file, arch_name)
-                        desc = "(diffusion gradient information)"
 
             dict_append(image03_dict, 'data_file2', os.path.join(args.output_directory, zip_name))
-            dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata files (%s) using file "
-                                                                "formats and field definitions from the Brain Imaging "
-                                                                "Data Structure (http://bids.neuroimaging.io)" % desc)
+            dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata from Brain Imaging "
+                                                                "Data Structure (http://bids.neuroimaging.io)")
         else:
             dict_append(image03_dict, 'data_file2', "")
             dict_append(image03_dict, 'data_file2_type', "")
