@@ -210,7 +210,9 @@ def run(args):
             dict_append(image03_dict, 'mri_repetition_time_pd', TR)
         else:
             image_unit4 = ""
-            dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", 0))
+            dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", ""))
+
+        dict_append(image03_dict, 'slice_timing', metadata.get("SliceTiming", ""))
         dict_append(image03_dict, 'image_unit4', image_unit4)
 
         dict_append(image03_dict, 'mri_field_of_view_pd', "%g x %g %s" % (nii.header.get_zooms()[0],
