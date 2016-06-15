@@ -187,6 +187,8 @@ def run(args):
             extent4_type = ""
         dict_append(image03_dict, 'extent4_type', extent4_type)
 
+        dict_append(image03_dict, 'acquisition_matrix', "%g x %g" %(nii.shape[0], nii.shape[1]))
+
         dict_append(image03_dict, 'image_resolution1', nii.header.get_zooms()[0])
         dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
@@ -210,6 +212,11 @@ def run(args):
             image_unit4 = ""
             dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", 0))
         dict_append(image03_dict, 'image_unit4', image_unit4)
+
+        dict_append(image03_dict, 'mri_field_of_view_pd', "%g x %g %s" % (nii.header.get_zooms()[0],
+                                                                          nii.header.get_zooms()[1],
+                                                                          units_dict[nii.header.get_xyzt_units()[0]]))
+        dict_append(image03_dict, 'patient_position', 'head first-supine')
 
         if file.split(os.sep)[-1].split("_")[1].startswith("ses"):
             visit = file.split(os.sep)[-1].split("_")[1][4:]
@@ -235,30 +242,35 @@ def run(args):
                     if os.path.exists(events_file):
                         zipf.write(events_file, arch_name)
 
-                if suffix == "dwi":
-                    # TODO write a more robust function for finding those files
-                    bvec_file = file.split("_dwi")[0] + "_dwi.bvec"
-                    arch_name = os.path.split(bvec_file)[1]
-                    if not os.path.exists(bvec_file):
-                        bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
-
-                    if os.path.exists(bvec_file):
-                        zipf.write(bvec_file, arch_name)
-
-                    bval_file = file.split("_dwi")[0] + "_dwi.bval"
-                    arch_name = os.path.split(bval_file)[1]
-                    if not os.path.exists(bval_file):
-                        bval_file = os.path.join(args.bids_directory, "dwi.bval")
-
-                    if os.path.exists(bval_file):
-                        zipf.write(bval_file, arch_name)
-
             dict_append(image03_dict, 'data_file2', os.path.join(args.output_directory, zip_name))
             dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata from Brain Imaging "
                                                                 "Data Structure (http://bids.neuroimaging.io)")
         else:
             dict_append(image03_dict, 'data_file2', "")
             dict_append(image03_dict, 'data_file2_type', "")
+
+        if suffix == "dwi":
+            # TODO write a more robust function for finding those files
+            bvec_file = file.split("_dwi")[0] + "_dwi.bvec"
+            if not os.path.exists(bvec_file):
+                bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
+
+            if os.path.exists(bvec_file):
+                dict_append(image03_dict, 'bvecfile', bvec_file)
+            else:
+                dict_append(image03_dict, 'bvecfile', "")
+
+            bval_file = file.split("_dwi")[0] + "_dwi.bval"
+            if not os.path.exists(bval_file):
+                bval_file = os.path.join(args.bids_directory, "dwi.bval")
+
+            if os.path.exists(bval_file):
+                dict_append(image03_dict, 'bvalfile', bval_file)
+            else:
+                dict_append(image03_dict, 'bvalfile', "")
+        else:
+            dict_append(image03_dict, 'bvecfile', "")
+            dict_append(image03_dict, 'bvalfile', "")
 
 
     image03_df = pd.DataFrame(image03_dict)
