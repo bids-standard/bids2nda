@@ -154,6 +154,7 @@ def run(args):
             dict_append(image03_dict, 'experiment_id', metadata.get("ExperimentID", ""))
         else:
             description = suffix
+            dict_append(image03_dict, 'experiment_id', '')
         dict_append(image03_dict, 'image_description', description)
         dict_append(image03_dict, 'scan_type', suffix_to_scan_type[suffix])
         dict_append(image03_dict, 'scan_object', "Live")
@@ -278,7 +279,7 @@ def run(args):
         else:
             dict_append(image03_dict, 'bvecfile', "")
             dict_append(image03_dict, 'bvalfile', "")
-
+            dict_append(image03_dict, 'bvek_bval_files', "")
 
     image03_df = pd.DataFrame(image03_dict)
 
