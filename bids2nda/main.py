@@ -140,7 +140,7 @@ def run(args):
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0], 0))
+        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0], 0))*12
         dict_append(image03_dict, 'interview_age', interview_age)
 
         sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
@@ -151,6 +151,7 @@ def run(args):
         suffix = file.split("_")[-1].split(".")[0]
         if suffix == "bold":
             description = suffix + " " + metadata["TaskName"]
+            dict_append(image03_dict, 'experiment_id', metadata.get("ExperimentID", ""))
         else:
             description = suffix
         dict_append(image03_dict, 'image_description', description)
@@ -270,6 +271,10 @@ def run(args):
                 dict_append(image03_dict, 'bvalfile', bval_file)
             else:
                 dict_append(image03_dict, 'bvalfile', "")
+            if os.path.exists(bval_file) or os.path.exists(bvec_file):
+                dict_append(image03_dict, 'bvek_bval_files', 'Yes')
+            else:
+                dict_append(image03_dict, 'bvek_bval_files', 'No')
         else:
             dict_append(image03_dict, 'bvecfile', "")
             dict_append(image03_dict, 'bvalfile', "")
