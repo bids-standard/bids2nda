@@ -162,11 +162,12 @@ def run(args):
         dict_append(image03_dict, 'image_modality', "MRI")
         dict_append(image03_dict, 'scanner_manufacturer_pd', metadata.get("Manufacturer", ""))
         dict_append(image03_dict, 'scanner_type_pd', metadata.get("ManufacturersModelName", ""))
-        dict_append(image03_dict, 'scanner_software_versions_pd', metadata.get("HardcopyDeviceSoftwareVersion", ""))
+        dict_append(image03_dict, 'scanner_software_versions_pd', metadata.get("SoftwareVersions", ""))
         dict_append(image03_dict, 'magnetic_field_strength', metadata.get("MagneticFieldStrength", ""))
         dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
         dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
+        dict_append(image03_dict, 'image_slice_thickness', metadata.get("SliceThickness", ""))        
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
