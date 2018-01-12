@@ -167,7 +167,17 @@ def run(args):
         dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
         dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
-        dict_append(image03_dict, 'image_slice_thickness', metadata.get("SliceThickness", ""))        
+        dict_append(image03_dict, 'image_slice_thickness', metadata.get("SliceThickness", ""))
+        dict_append(image03_dict, 'photomet_interpret', metadata.get("PhotometricInterpretation", ""))
+
+        plane = metadata.get("ImageOrientationPatient")
+        plane=round(plane)
+        if plane[0] == 1:
+            dict_append(image03_dict, 'image_orientation.', "Sagittal")
+        elif plane[1] == 1:
+            dict_append(image03_dict, 'image_orientation.', "Coronal")
+        elif plane[2] == 1:
+            dict_append(image03_dict, 'image_orientation.', "Axial")
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
