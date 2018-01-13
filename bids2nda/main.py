@@ -15,6 +15,7 @@ import sys
 import nibabel as nb
 import json
 import pandas as pd
+import numpy as np
 
 
 # Gather our code in a main() function
@@ -171,13 +172,8 @@ def run(args):
         dict_append(image03_dict, 'photomet_interpret', metadata.get("PhotometricInterpretation", ""))
 
         plane = metadata.get("ImageOrientationPatient")
-        plane=round(plane)
-        if plane[0] == 1:
-            dict_append(image03_dict, 'image_orientation.', "Sagittal")
-        elif plane[1] == 1:
-            dict_append(image03_dict, 'image_orientation.', "Coronal")
-        elif plane[2] == 1:
-            dict_append(image03_dict, 'image_orientation.', "Axial")
+        get_orientation = lambda place: ['Axial','Coronal','Sagittal'][np.argmax(plane[:3])]
+        dict_append(image03_dict, 'image_orientation.',get_orientation(plane))
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
