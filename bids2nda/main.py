@@ -168,8 +168,8 @@ def run(args):
         dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
         dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
-        dict_append(image03_dict, 'image_slice_thickness', metadata.get("SliceThickness", ""))
-        dict_append(image03_dict, 'photomet_interpret', metadata.get("PhotometricInterpretation", ""))
+        dict_append(image03_dict, 'image_slice_thickness', metadata.get("global.const.SliceThickness", ""))
+        dict_append(image03_dict, 'photomet_interpret', metadata.get("global.const.PhotometricInterpretation", ""))
 
         plane = metadata.get("ImageOrientationPatient")
         get_orientation = lambda place: ['Axial','Coronal','Sagittal'][np.argmax(plane[:3])]
