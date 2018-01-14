@@ -75,6 +75,63 @@ def dict_append(d, key, value):
         d[key] = [value, ]
 
 
+def cosine_to_orientation(img_ornt_pat):
+    """Deduce slicing from cosines
+
+    From http://nipy.org/nibabel/dicom/dicom_orientation.html#dicom-voxel-to
+    -patient-coordinate-system-mapping
+
+    From Section C.7.6.1.1.1 we see that the "positive row axis" is left to
+    right, and is the direction of the rows, given by the direction of last
+    pixel in the first row from the first pixel in that row. Similarly the
+    "positive column axis" is top to bottom and is the direction of the columns,
+    given by the direction of the last pixel in the first column from the first
+    pixel in that column.
+
+    Let's rephrase: the first three values of "Image Orientation Patient" are
+    the direction cosine for the "positive row axis". That is, they express the
+    direction change in (x, y, z), in the DICOM patient coordinate system
+    (DPCS), as you move along the row. That is, as you move from one column to
+    the next. That is, as the column array index changes. Similarly, the second
+    triplet of values of "Image Orientation Patient" (img_ornt_pat[3:] in
+    Python), are the direction cosine for the "positive column axis", and
+    express the direction you move, in the DPCS, as you move from row to row,
+    and therefore as the row index changes.
+
+    Parameters
+    ----------
+    img_ornt_pat: list of float
+       Values of the ImageOrientationPatient field
+
+    Returns
+    -------
+    {'Axial', 'Coronal', 'Sagital'}
+    """
+    # we do not care about the signs
+    img_ornt_pat = np.abs(img_ornt_pat)
+    # we need to figure out first leading dimension and the 2nd
+    d1 = int(np.argmax(img_ornt_pat[:3]))
+    d2 = int(np.argmax(img_ornt_pat[3:]))
+    ds = tuple(sorted([d1, d2]))
+    try:
+        return {
+            (0, 1): 'Axial',
+            (1, 2): 'Sagital',
+            (0, 2): 'Coronal'
+        }[ds]
+    except KeyError:
+        raise RuntimeError(
+            "Could not deduce the image orientation of %r with both directions "
+            "being detected as %r. Give us a use-case to fine tune"
+            % (img_ornt_pat, ds)
+        )
+
+
+def test_cosine_to_orientation():
+    assert cosine_to_orientation([0.9, -0.03, -0.1, 0.03, 0.9, 0.1]) == 'Axial'
+    assert cosine_to_orientation([0, 0.9, 0.1, 0.03, 0.1, -0.9]) == 'Coronal'
+
+
 def run(args):
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
