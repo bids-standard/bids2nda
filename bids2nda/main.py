@@ -156,6 +156,8 @@ def run(args):
         else:
             description = suffix
             dict_append(image03_dict, 'experiment_id', '')
+        # Shortcut for the global.const section -- apparently might not be flattened fully
+        metadata_const = metadata.get('global', {}).get('const', {})
         dict_append(image03_dict, 'image_description', description)
         dict_append(image03_dict, 'scan_type', suffix_to_scan_type[suffix])
         dict_append(image03_dict, 'scan_object', "Live")
@@ -168,9 +170,8 @@ def run(args):
         dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
         dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
-        dict_append(image03_dict, 'image_slice_thickness', metadata.get("SliceThickness", ""))
-        dict_append(image03_dict, 'photomet_interpret', metadata.get("PhotometricInterpretation", ""))
-
+        dict_append(image03_dict, 'image_slice_thickness', metadata_const.get("SliceThickness", ""))
+        dict_append(image03_dict, 'photomet_interpret', metadata_const.get('PhotometricInterpretation', ''))
         dict_append(image03_dict, 'image_orientation', 'TODO')  # see https://github.com/INCF/BIDS2NDA/issues/12
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
