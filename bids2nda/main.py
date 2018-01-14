@@ -171,9 +171,7 @@ def run(args):
         dict_append(image03_dict, 'image_slice_thickness', metadata.get("SliceThickness", ""))
         dict_append(image03_dict, 'photomet_interpret', metadata.get("PhotometricInterpretation", ""))
 
-        plane = metadata.get("ImageOrientationPatient")
-        get_orientation = lambda place: ['Axial','Coronal','Sagittal'][np.argmax(plane[:3])]
-        dict_append(image03_dict, 'image_orientation.',get_orientation(plane))
+        dict_append(image03_dict, 'image_orientation', 'TODO')  # see https://github.com/INCF/BIDS2NDA/issues/12
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
