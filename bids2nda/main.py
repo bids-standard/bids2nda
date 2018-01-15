@@ -168,10 +168,9 @@ def run(args):
         dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
         dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
-        dict_append(image03_dict, 'image_slice_thickness', metadata.get("global.const.SliceThickness", ""))
-        dict_append(image03_dict, 'photomet_interpret', metadata.get("global.const.PhotometricInterpretation", ""))
 
-        plane = metadata.get("ImageOrientationPatient")
+
+        plane = metadata.get("ImageOrientationPatient","")
         get_orientation = lambda place: ['Axial','Coronal','Sagittal'][np.argmax(plane[:3])]
         dict_append(image03_dict, 'image_orientation.',get_orientation(plane))
         dict_append(image03_dict, 'transformation_performed', 'Yes')
@@ -201,6 +200,8 @@ def run(args):
         dict_append(image03_dict, 'image_resolution1', nii.header.get_zooms()[0])
         dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
+        dict_append(image03_dict, 'image_slice_thickness', nii.header.get_zooms()[2])
+        dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation"),""))
         if len(nii.shape) > 3:
             image_resolution4 = nii.header.get_zooms()[3]
         else:
