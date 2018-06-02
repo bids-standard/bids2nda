@@ -109,6 +109,7 @@ def run(args):
                   "msec": "Milliseconds"}
 
     participants_df = pd.read_csv(os.path.join(args.bids_directory, "participants.tsv"), header=0, sep="\t")
+    participants_df['age']  =  participants_df.age.astype(str).str.rstrip('Y').str.lstrip('0')
 
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
@@ -141,7 +142,7 @@ def run(args):
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0], 0))*12
+        interview_age = int(round(float(participants_df[participants_df.participant_id == "sub-" + sub].age.values[0]), 0)*12)
         dict_append(image03_dict, 'interview_age', interview_age)
 
         sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
