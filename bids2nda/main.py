@@ -203,28 +203,29 @@ def run(args):
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
         dict_append(image03_dict, 'image_slice_thickness', nii.header.get_zooms()[2])
         dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation",""))
+
         if len(nii.shape) > 3:
             image_resolution4 = nii.header.get_zooms()[3]
-        else:
-            image_resolution4 = ""
-        dict_append(image03_dict, 'image_resolution4', image_resolution4)
-
-        dict_append(image03_dict, 'image_unit1', units_dict[nii.header.get_xyzt_units()[0]])
-        dict_append(image03_dict, 'image_unit2', units_dict[nii.header.get_xyzt_units()[0]])
-        dict_append(image03_dict, 'image_unit3', units_dict[nii.header.get_xyzt_units()[0]])
-        if len(nii.shape) > 3:
             image_unit4 = units_dict[nii.header.get_xyzt_units()[1]]
             if image_unit4 == "Milliseconds":
                 TR = nii.header.get_zooms()[3]/1000.
             else:
                 TR = nii.header.get_zooms()[3]
-            dict_append(image03_dict, 'mri_repetition_time_pd', TR)
         else:
+            image_resolution4 = ""
             image_unit4 = ""
-            dict_append(image03_dict, 'mri_repetition_time_pd', metadata.get("RepetitionTime", ""))
+            TR = metadata.get("RepetitionTime", "")
 
-        dict_append(image03_dict, 'slice_timing', metadata.get("SliceTiming", ""))
+        slice_timing = metadata.get("SliceTiming", "")
+
+
+        dict_append(image03_dict, 'slice_timing', slice_timing)
         dict_append(image03_dict, 'image_unit4', image_unit4)
+        dict_append(image03_dict, 'mri_repetition_time_pd', TR)
+        dict_append(image03_dict, 'image_resolution4', image_resolution4)
+        dict_append(image03_dict, 'image_unit1', units_dict[nii.header.get_xyzt_units()[0]])
+        dict_append(image03_dict, 'image_unit2', units_dict[nii.header.get_xyzt_units()[0]])
+        dict_append(image03_dict, 'image_unit3', units_dict[nii.header.get_xyzt_units()[0]])
 
         dict_append(image03_dict, 'mri_field_of_view_pd', "%g x %g %s" % (nii.header.get_zooms()[0],
                                                                           nii.header.get_zooms()[1],
@@ -289,6 +290,11 @@ def run(args):
             dict_append(image03_dict, 'bvecfile', "")
             dict_append(image03_dict, 'bvalfile', "")
             dict_append(image03_dict, 'bvek_bval_files', "")
+
+        # all values of image03_dict should be the same length.
+        # Fail when this is not true instead of when the dataframe
+        # is created.
+        assert(len(set(map(len,image03_dict.values()))) ==1)
 
     image03_df = pd.DataFrame(image03_dict)
 
