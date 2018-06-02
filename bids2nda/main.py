@@ -153,7 +153,7 @@ def run(args):
         suffix = file.split("_")[-1].split(".")[0]
         if suffix == "bold":
             description = suffix + " " + metadata["TaskName"]
-            dict_append(image03_dict, 'experiment_id', metadata.get("ExperimentID", ""))
+            dict_append(image03_dict, 'experiment_id', metadata.get("ExperimentID", args.experiment_id))
         else:
             description = suffix
             dict_append(image03_dict, 'experiment_id', '')
@@ -314,6 +314,9 @@ def main():
         "bids_directory",
         help="Location of the root of your BIDS compatible directory",
         metavar="BIDS_DIRECTORY")
+    parser.add_argument('-e', '--experiment_id', default=None,
+        help = ("Functional scans require an experiment_id. If ExperimentID is not"
+        " found in the scan metadata this value is used"))
     parser.add_argument(
         "guid_mapping",
         help="Path to a text file with participant_id to GUID mapping. You will need to use the "
