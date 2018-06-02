@@ -242,21 +242,24 @@ def run(args):
         if len(metadata) > 0 or suffix in ['bold', 'dwi']:
             _, fname = os.path.split(file)
             zip_name = fname.split(".")[0] + ".metadata.zip"
-            with zipfile.ZipFile(os.path.join(args.output_directory, zip_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zip_path = os.path.join(args.output_directory, zip_name)
+            zip_path_exists = os.path.exists(zip_path)
+            if not zip_path_exists or (zip_path_exists and args.overwrite_zips):
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
 
-                zipf.writestr(fname.replace(".nii.gz", ".json"), json.dumps(metadata, indent=4, sort_keys=True))
-                if suffix == "bold":
-                    #TODO write a more robust function for finding those files
-                    events_file = file.split("_bold")[0] + "_events.tsv"
-                    arch_name = os.path.split(events_file)[1]
-                    if not os.path.exists(events_file):
-                        task_name = file.split("_task-")[1].split("_")[0]
-                        events_file = os.path.join(args.bids_directory, "task-" + task_name + "_events.tsv")
+                    zipf.writestr(fname.replace(".nii.gz", ".json"), json.dumps(metadata, indent=4, sort_keys=True))
+                    if suffix == "bold":
+                        #TODO write a more robust function for finding those files
+                        events_file = file.split("_bold")[0] + "_events.tsv"
+                        arch_name = os.path.split(events_file)[1]
+                        if not os.path.exists(events_file):
+                            task_name = file.split("_task-")[1].split("_")[0]
+                            events_file = os.path.join(args.bids_directory, "task-" + task_name + "_events.tsv")
 
-                    if os.path.exists(events_file):
-                        zipf.write(events_file, arch_name)
+                        if os.path.exists(events_file):
+                            zipf.write(events_file, arch_name)
 
-            dict_append(image03_dict, 'data_file2', os.path.join(args.output_directory, zip_name))
+            dict_append(image03_dict, 'data_file2', zip_path)
             dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata from Brain Imaging "
                                                                 "Data Structure (http://bids.neuroimaging.io)")
         else:
@@ -320,6 +323,9 @@ def main():
     parser.add_argument('-e', '--experiment_id', default=None,
         help = ("Functional scans require an experiment_id. If ExperimentID is not"
         " found in the scan metadata this value is used"))
+    parser.add_argument('-o', '--overwrite_zips', action='store_true',
+            help = ("If a conversion has already been performed, the default is "
+                "to avoid rewriting each zip file generated and instead just rewrite image03.txt"))
     parser.add_argument(
         "guid_mapping",
         help="Path to a text file with participant_id to GUID mapping. You will need to use the "
