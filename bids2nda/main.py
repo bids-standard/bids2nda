@@ -86,8 +86,11 @@ def run(args):
                            "PD": "MR structural (PD)",
                            #"MR structural(FSPGR)",
                            "T2w": "MR structural (T2)",
+                           "T2map": "MR structural (T2)",
+                           "T2star": "MR: T2star",
+                           "FLAIR": "MR: FLAIR",
+                           "asl": "ASL",
                            #PET;
-                            #ASL;
                             #microscopy;
                             #MR structural(PD, T2);
                             #MR structural(B0 map);
