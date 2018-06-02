@@ -182,12 +182,6 @@ def run(args):
         dict_append(image03_dict, 'image_extent1', nii.shape[0])
         dict_append(image03_dict, 'image_extent2', nii.shape[1])
         dict_append(image03_dict, 'image_extent3', nii.shape[2])
-        if len(nii.shape) > 3:
-            image_extent4 = nii.shape[3]
-        else:
-            image_extent4 = ""
-
-        dict_append(image03_dict, 'image_extent4', image_extent4)
         if suffix == "bold":
             extent4_type = "time"
         elif suffix == "dwi":
@@ -205,6 +199,7 @@ def run(args):
         dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation",""))
 
         if len(nii.shape) > 3:
+            image_extent4 = nii.shape[3]
             image_resolution4 = nii.header.get_zooms()[3]
             image_unit4 = units_dict[nii.header.get_xyzt_units()[1]]
             if image_unit4 == "Milliseconds":
@@ -214,11 +209,13 @@ def run(args):
         else:
             image_resolution4 = ""
             image_unit4 = ""
+            image_extent4 = ""
             TR = metadata.get("RepetitionTime", "")
 
         slice_timing = metadata.get("SliceTiming", "")
 
 
+        dict_append(image03_dict, 'image_extent4', image_extent4)
         dict_append(image03_dict, 'slice_timing', slice_timing)
         dict_append(image03_dict, 'image_unit4', image_unit4)
         dict_append(image03_dict, 'mri_repetition_time_pd', TR)
