@@ -199,7 +199,7 @@ def run(args):
         dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
         dict_append(image03_dict, 'image_slice_thickness', nii.header.get_zooms()[2])
-        dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation",""))
+        dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation","MONOCHROME2"))
 
         if len(nii.shape) > 3:
             image_extent4 = nii.shape[3]
