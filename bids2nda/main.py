@@ -85,6 +85,7 @@ def run(args):
                            "PD": "MR structural (PD)",
                            #"MR structural(FSPGR)",
                            "T2w": "MR structural (T2)",
+                           "FLASH": "MR structural (FLASH)",
                            #PET;
                             #ASL;
                             #microscopy;
