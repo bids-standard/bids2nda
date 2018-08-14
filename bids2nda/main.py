@@ -90,6 +90,7 @@ def run(args):
                            "T2star": "MR: T2star",
                            "FLAIR": "MR: FLAIR",
                            "asl": "ASL",
+                           "FLASH": "MR structural (FLASH)",
                            #PET;
                             #microscopy;
                             #MR structural(PD, T2);
