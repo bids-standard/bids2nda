@@ -110,6 +110,9 @@ def run(args):
                            "T2star": "MR: T2star",
                            "FLAIR": "MR: FLAIR",
                            "asl": "ASL",
+                           "MZeroScan": "ASL",
+                           "DeltaM": "ASL",
+                           "CBF": "ASL",
                            "FLASH": "MR structural (FLASH)",
                            #PET;
                             #microscopy;
@@ -124,6 +127,7 @@ def run(args):
                            "phasediff": "Field Map",
                            "magnitude1": "Field Map",
                            "magnitude2": "Field Map",
+                           "magnitude": "Field Map",
                            "fieldmap": "Field Map"
                            #X - Ray
                            }
