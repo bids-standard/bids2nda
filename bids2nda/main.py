@@ -311,6 +311,9 @@ def run(args):
 
                     if os.path.exists(bval_file):
                         manifest_files.append(bvec_file)
+
+                    if os.path.exists(bval_file) & os.path.exists(bvec_file):
+                        dict_append(image03_dict, 'bvek_bval_files', 'Yes')
  
 
             write_mani_files(file, manifest_path, files=manifest_files)
@@ -344,33 +347,33 @@ def run(args):
                 dict_append(image03_dict, 'data_file2', "")
                 dict_append(image03_dict, 'data_file2_type', "")
 
-        if suffix == "dwi":
-            # TODO write a more robust function for finding those files
-            bvec_file = file.split("_dwi")[0] + "_dwi.bvec"
-            if not os.path.exists(bvec_file):
-                bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
+            if suffix == "dwi":
+                # TODO write a more robust function for finding those files
+                bvec_file = file.split("_dwi")[0] + "_dwi.bvec"
+                if not os.path.exists(bvec_file):
+                    bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
 
-            if os.path.exists(bvec_file):
-                dict_append(image03_dict, 'bvecfile', bvec_file)
+                if os.path.exists(bvec_file):
+                    dict_append(image03_dict, 'bvecfile', bvec_file)
+                else:
+                    dict_append(image03_dict, 'bvecfile', "")
+
+                bval_file = file.split("_dwi")[0] + "_dwi.bval"
+                if not os.path.exists(bval_file):
+                    bval_file = os.path.join(args.bids_directory, "dwi.bval")
+
+                if os.path.exists(bval_file):
+                    dict_append(image03_dict, 'bvalfile', bval_file)
+                else:
+                    dict_append(image03_dict, 'bvalfile', "")
+                if os.path.exists(bval_file) or os.path.exists(bvec_file):
+                    dict_append(image03_dict, 'bvek_bval_files', 'Yes')
+                else:
+                    dict_append(image03_dict, 'bvek_bval_files', 'No')
             else:
                 dict_append(image03_dict, 'bvecfile', "")
-
-            bval_file = file.split("_dwi")[0] + "_dwi.bval"
-            if not os.path.exists(bval_file):
-                bval_file = os.path.join(args.bids_directory, "dwi.bval")
-
-            if os.path.exists(bval_file):
-                dict_append(image03_dict, 'bvalfile', bval_file)
-            else:
                 dict_append(image03_dict, 'bvalfile', "")
-            if os.path.exists(bval_file) or os.path.exists(bvec_file):
-                dict_append(image03_dict, 'bvek_bval_files', 'Yes')
-            else:
-                dict_append(image03_dict, 'bvek_bval_files', 'No')
-        else:
-            dict_append(image03_dict, 'bvecfile', "")
-            dict_append(image03_dict, 'bvalfile', "")
-            dict_append(image03_dict, 'bvek_bval_files', "")
+                dict_append(image03_dict, 'bvek_bval_files', "")
         
 
     # all values of image03_dict should be the same length.
