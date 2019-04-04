@@ -11,6 +11,8 @@ from collections import OrderedDict
 from glob import glob
 import os
 import sys
+import hashlib
+from pathlib import Path
 
 import nibabel as nb
 import json
@@ -75,6 +77,24 @@ def dict_append(d, key, value):
         d[key] = [value, ]
 
 
+def mani_dict_from_filepath(filepath):
+    mani = {}
+    mani["path"] = filepath
+    mani["name"] = os.path.basename(filepath)
+    pathStr=mani["path"].encode()
+    mani["md5sum"] = hashlib.md5(pathStr).hexdigest()
+    mani["size"] = os.path.getsize(pathStr)
+    return mani
+
+
+def write_mani_files(imagefile, outputfile, files=None):
+    json_dict = {"files": [mani_dict_from_filepath(imagefile)]}
+    if files is not None:
+        for ff in files:
+            json_dict["files"].append(mani_dict_from_filepath(ff))
+    Path(outputfile).write_text(json.dumps(json_dict, indent=2))
+
+
 def run(args):
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
@@ -113,7 +133,11 @@ def run(args):
                   "msec": "Milliseconds"}
 
     participants_df = pd.read_csv(os.path.join(args.bids_directory, "participants.tsv"), header=0, sep="\t")
-    participants_df['age']  =  participants_df.age.astype(str).str.rstrip('Y').str.lstrip('0')
+    try:
+        participants_df['age']  =  participants_df.age.astype(str).str.rstrip('Y').str.lstrip('0')
+    except AttributeError:
+        # If we can't find an age, it might be in the sessions.tsvs in which case we'll grab it later
+        pass
 
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
@@ -129,6 +153,7 @@ def run(args):
         if "ses-" in file:
             ses = file.split("ses-")[-1].split("_")[0]
             scans_file = (os.path.join(args.bids_directory, "sub-" + sub, "ses-" + ses, "sub-" + sub + "_ses-" + ses + "_scans.tsv"))
+            sess_file = (os.path.join(args.bids_directory, "sub-" + sub,"sub-" + sub + "_sessions.tsv"))
         else:
             scans_file = (os.path.join(args.bids_directory, "sub-" + sub, "sub-" + sub + "_scans.tsv"))
 
@@ -146,13 +171,22 @@ def run(args):
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        interview_age = int(round(float(participants_df[participants_df.participant_id == "sub-" + sub].age.values[0]), 0)*12)
+        try:
+            interview_age = int(round(float(participants_df[participants_df.participant_id == "sub-" + sub].age.values[0]), 0)*12)
+        except AttributeError:
+            sess_df = pd.read_csv(sess_file, header=0, sep='\t')
+            if 'age_months' in sess_df.columns:
+                interview_age = sess_df.loc[sess_df.session_id == ("ses-" + ses),'age_months'].values[0]
+            else:
+                interview_age = int(round(float(sess_df.loc[sess_df.session_id == ("ses-" + ses), 'age'].values[0]), 0)*12)
         dict_append(image03_dict, 'interview_age', interview_age)
 
         sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
         dict_append(image03_dict, 'gender', sex)
 
-        dict_append(image03_dict, 'image_file', file)
+        # image_file field not used if manifest is used
+        if not args.manifest:
+            dict_append(image03_dict, 'image_file', file)
 
         suffix = file.split("_")[-1].split(".")[0]
         if suffix == "bold":
@@ -240,32 +274,83 @@ def run(args):
 
         dict_append(image03_dict, 'visit', visit)
 
-        if len(metadata) > 0 or suffix in ['bold', 'dwi']:
+
+        if args.manifest:
             _, fname = os.path.split(file)
-            zip_name = fname.split(".")[0] + ".metadata.zip"
-            zip_path = os.path.join(args.output_directory, zip_name)
-            zip_path_exists = os.path.exists(zip_path)
-            if not zip_path_exists or (zip_path_exists and args.overwrite_zips):
-                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            manifest_name = fname.split(".")[0] + "_manifest.json"
+            manifest_path = os.path.join(args.output_directory, 'manifest', manifest_name)
+            if not os.path.exists(os.path.join(args.output_directory, 'manifest')):
+                Path(os.path.join(args.output_directory, 'manifest')).mkdir(parents=True)
+            manifest_path_exists = os.path.exists(manifest_path)
+            manifest_files = None
+            if not manifest_path_exists or (manifest_path_exists and args.overwrite_zips):
+                # get the list of files for the manifest
+                manifest_files = []
+                if len(metadata) > 0:
+                    manifest_files.append(file.replace(".nii.gz", ".json"))
+                if suffix == "bold":
+                    events_file = file.split("_bold")[0] + "_events.tsv"
+                    arch_name = os.path.split(events_file)[1]
+                    if not os.path.exists(events_file):
+                        task_name = file.split("_task-")[1].split("_")[0]
+                        events_file = os.path.join(args.bids_directory, "task-" + task_name + "_events.tsv")
+                    if os.path.exists(events_file):
+                        manifest_files.append(events_file)
+                if suffix == "dwi":
+                    # TODO write a more robust function for finding those files
+                    bvec_file = file.split("_dwi")[0] + "_dwi.bvec"
+                    if not os.path.exists(bvec_file):
+                        bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
 
-                    zipf.writestr(fname.replace(".nii.gz", ".json"), json.dumps(metadata, indent=4, sort_keys=True))
-                    if suffix == "bold":
-                        #TODO write a more robust function for finding those files
-                        events_file = file.split("_bold")[0] + "_events.tsv"
-                        arch_name = os.path.split(events_file)[1]
-                        if not os.path.exists(events_file):
-                            task_name = file.split("_task-")[1].split("_")[0]
-                            events_file = os.path.join(args.bids_directory, "task-" + task_name + "_events.tsv")
+                    if os.path.exists(bvec_file):
+                        dict_append(image03_dict, 'bvecfile', bvec_file)
+                    else:
+                        dict_append(image03_dict, 'bvecfile', "")
 
-                        if os.path.exists(events_file):
-                            zipf.write(events_file, arch_name)
+                    bval_file = file.split("_dwi")[0] + "_dwi.bval"
+                    if not os.path.exists(bval_file):
+                        bval_file = os.path.join(args.bids_directory, "dwi.bval")
 
-            dict_append(image03_dict, 'data_file2', zip_path)
-            dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata from Brain Imaging "
-                                                                "Data Structure (http://bids.neuroimaging.io)")
+                    if os.path.exists(bval_file):
+                        dict_append(image03_dict, 'bvalfile', bval_file)
+                    else:
+                        dict_append(image03_dict, 'bvalfile', "")
+                    if os.path.exists(bval_file) or os.path.exists(bvec_file):
+                        dict_append(image03_dict, 'bvek_bval_files', 'Yes')
+                    else:
+                        dict_append(image03_dict, 'bvek_bval_files', 'No')
+ 
+
+            write_mani_files(file, manifest_path, files=manifest_files)
+            dict_append(image03_dict, 'manifest', manifest_path)            
+
         else:
-            dict_append(image03_dict, 'data_file2', "")
-            dict_append(image03_dict, 'data_file2_type', "")
+            if len(metadata) > 0 or suffix in ['bold', 'dwi']:
+                _, fname = os.path.split(file)
+                zip_name = fname.split(".")[0] + ".metadata.zip"
+                zip_path = os.path.join(args.output_directory, zip_name)
+                zip_path_exists = os.path.exists(zip_path)
+                if not zip_path_exists or (zip_path_exists and args.overwrite_zips):
+                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+
+                        zipf.writestr(fname.replace(".nii.gz", ".json"), json.dumps(metadata, indent=4, sort_keys=True))
+                        if suffix == "bold":
+                            #TODO write a more robust function for finding those files
+                            events_file = file.split("_bold")[0] + "_events.tsv"
+                            arch_name = os.path.split(events_file)[1]
+                            if not os.path.exists(events_file):
+                                task_name = file.split("_task-")[1].split("_")[0]
+                                events_file = os.path.join(args.bids_directory, "task-" + task_name + "_events.tsv")
+
+                            if os.path.exists(events_file):
+                                zipf.write(events_file, arch_name)
+
+                dict_append(image03_dict, 'data_file2', zip_path)
+                dict_append(image03_dict, 'data_file2_type', "ZIP file with additional metadata from Brain Imaging "
+                                                                    "Data Structure (http://bids.neuroimaging.io)")
+            else:
+                dict_append(image03_dict, 'data_file2', "")
+                dict_append(image03_dict, 'data_file2_type', "")
 
         if suffix == "dwi":
             # TODO write a more robust function for finding those files
@@ -294,17 +379,20 @@ def run(args):
             dict_append(image03_dict, 'bvecfile', "")
             dict_append(image03_dict, 'bvalfile', "")
             dict_append(image03_dict, 'bvek_bval_files', "")
+        
 
-        # all values of image03_dict should be the same length.
-        # Fail when this is not true instead of when the dataframe
-        # is created.
-        assert(len(set(map(len,image03_dict.values()))) ==1)
+    # all values of image03_dict should be the same length.
+    # Fail when this is not true instead of when the dataframe
+    # is created.
+    assert(len(set(map(len,image03_dict.values()))) ==1)
 
     image03_df = pd.DataFrame(image03_dict)
 
-    with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
-        out_fp.write('"image"\t"3"\n')
-        image03_df.to_csv(out_fp, sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    with open(os.path.join(args.output_directory, "image03.csv"), "w") as out_fp:
+        nfields = image03_df.shape[1]
+        head_string = 'image,3,' + (',' * (nfields - 3)) + '\n'
+        out_fp.write(head_string)
+        image03_df.to_csv(out_fp, sep=",", index=False, quoting=csv.QUOTE_ALL)
 
 def main():
     class MyParser(argparse.ArgumentParser):
@@ -326,7 +414,7 @@ def main():
         " found in the scan metadata this value is used"))
     parser.add_argument('-o', '--overwrite_zips', action='store_true',
             help = ("If a conversion has already been performed, the default is "
-                "to avoid rewriting each zip file generated and instead just rewrite image03.txt"))
+                "to avoid rewriting each zip or manifest file generated and instead just rewrite image03.txt"))
     parser.add_argument(
         "guid_mapping",
         help="Path to a text file with participant_id to GUID mapping. You will need to use the "
@@ -336,6 +424,8 @@ def main():
         "output_directory",
         help="Directory where NDA files will be stored",
         metavar="OUTPUT_DIRECTORY")
+    parser.add_argument('-m', '--manifest', action='store_true',
+        help="Use manifest file pairs to track image and json pairs")
     args = parser.parse_args()
 
     run(args)
