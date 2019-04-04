@@ -303,22 +303,14 @@ def run(args):
                         bvec_file = os.path.join(args.bids_directory, "dwi.bvec")
 
                     if os.path.exists(bvec_file):
-                        dict_append(image03_dict, 'bvecfile', bvec_file)
-                    else:
-                        dict_append(image03_dict, 'bvecfile', "")
+                        manifest_files.append(bvec_file)
 
                     bval_file = file.split("_dwi")[0] + "_dwi.bval"
                     if not os.path.exists(bval_file):
                         bval_file = os.path.join(args.bids_directory, "dwi.bval")
 
                     if os.path.exists(bval_file):
-                        dict_append(image03_dict, 'bvalfile', bval_file)
-                    else:
-                        dict_append(image03_dict, 'bvalfile', "")
-                    if os.path.exists(bval_file) or os.path.exists(bvec_file):
-                        dict_append(image03_dict, 'bvek_bval_files', 'Yes')
-                    else:
-                        dict_append(image03_dict, 'bvek_bval_files', 'No')
+                        manifest_files.append(bvec_file)
  
 
             write_mani_files(file, manifest_path, files=manifest_files)
