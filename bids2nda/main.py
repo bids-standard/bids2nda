@@ -75,7 +75,7 @@ def dict_append(d, key, value):
         d[key] = [value, ]
 
 
-def cosine_to_orientation(img_ornt_pat):
+def cosine_to_orientation(iop):
     """Deduce slicing from cosines
 
     From http://nipy.org/nibabel/dicom/dicom_orientation.html#dicom-voxel-to
@@ -100,36 +100,33 @@ def cosine_to_orientation(img_ornt_pat):
 
     Parameters
     ----------
-    img_ornt_pat: list of float
+    iop: list of float
        Values of the ImageOrientationPatient field
 
     Returns
     -------
-    {'Axial', 'Coronal', 'Sagital'}
+    {'Axial', 'Coronal', 'Sagittal'}
     """
-    # we do not care about the signs
-    img_ornt_pat = np.abs(img_ornt_pat)
-    # we need to figure out first leading dimension and the 2nd
-    d1 = int(np.argmax(img_ornt_pat[:3]))
-    d2 = int(np.argmax(img_ornt_pat[3:]))
-    ds = tuple(sorted([d1, d2]))
-    try:
-        return {
-            (0, 1): 'Axial',
-            (1, 2): 'Sagital',
-            (0, 2): 'Coronal'
-        }[ds]
-    except KeyError:
+    # Solution based on https://stackoverflow.com/a/45469577
+    iop_round = np.round(iop)
+    plane = np.cross(iop_round[0:3], iop_round[3:6])
+    plane = np.abs(plane)
+    if plane[0] == 1:
+        return "Sagittal"
+    elif plane[1] == 1:
+        return "Coronal"
+    elif plane[2] == 1:
+        return "Axial"
+    else:
         raise RuntimeError(
-            "Could not deduce the image orientation of %r with both directions "
-            "being detected as %r. Give us a use-case to fine tune"
-            % (img_ornt_pat, ds)
+            "Could not deduce the image orientation of %r. 'plane' value is %r"
+            % (iop, plane)
         )
 
 
 def test_cosine_to_orientation():
     assert cosine_to_orientation([0.9, -0.03, -0.1, 0.03, 0.9, 0.1]) == 'Axial'
-    assert cosine_to_orientation([0, 0.9, 0.1, 0.03, 0.1, -0.9]) == 'Coronal'
+    assert cosine_to_orientation([0, 0.9, 0.1, 0.03, 0.1, -0.9]) == 'Sagittal'
 
 
 def run(args):
@@ -229,7 +226,7 @@ def run(args):
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
         dict_append(image03_dict, 'image_slice_thickness', metadata_const.get("SliceThickness", ""))
         dict_append(image03_dict, 'photomet_interpret', metadata_const.get('PhotometricInterpretation', ''))
-        dict_append(image03_dict, 'image_orientation', 'TODO')  # see https://github.com/INCF/BIDS2NDA/issues/12
+        dict_append(image03_dict, 'image_orientation', cosine_to_orientation(metadata.get("ImageOrientationPatient")))
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
