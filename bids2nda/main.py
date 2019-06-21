@@ -226,7 +226,14 @@ def run(args):
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
         dict_append(image03_dict, 'image_slice_thickness', metadata_const.get("SliceThickness", ""))
         dict_append(image03_dict, 'photomet_interpret', metadata_const.get('PhotometricInterpretation', ''))
-        dict_append(image03_dict, 'image_orientation', cosine_to_orientation(metadata.get("ImageOrientationPatient")))
+        # ImageOrientationPatientDICOM is populated by recent dcm2niix,
+        # and ImageOrientationPatient might be provided by exhastive metadata
+        # record done by heudiconv
+        iop = metadata.get(
+            'ImageOrientationPatientDICOM',
+            metadata_const.get("ImageOrientationPatient", None)
+        )
+        dict_append(image03_dict, 'image_orientation', cosine_to_orientation(iop) if iop else '')
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
