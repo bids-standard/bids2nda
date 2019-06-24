@@ -124,11 +124,6 @@ def cosine_to_orientation(iop):
         )
 
 
-def test_cosine_to_orientation():
-    assert cosine_to_orientation([0.9, -0.03, -0.1, 0.03, 0.9, 0.1]) == 'Axial'
-    assert cosine_to_orientation([0, 0.9, 0.1, 0.03, 0.1, -0.9]) == 'Sagittal'
-
-
 def run(args):
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
