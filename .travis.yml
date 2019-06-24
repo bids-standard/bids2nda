@@ -1,0 +1,22 @@
+language: python
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+
+python:
+    - 2.7
+    - 3.5
+    - 3.6
+    - 3.7
+
+install:
+    - travis_retry pip install -e .
+    - travis_retry pip install pytest pytest-cov coverage
+
+script:
+    - python -m pytest --cov=bids2nda -s -v bids2nda
+
+after_success:
+    - travis_retry pip install codecov
+    - codecov
