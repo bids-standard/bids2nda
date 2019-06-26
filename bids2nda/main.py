@@ -15,6 +15,7 @@ import sys
 import nibabel as nb
 import json
 import pandas as pd
+import numpy as np
 
 
 # Gather our code in a main() function
@@ -72,6 +73,55 @@ def dict_append(d, key, value):
         d[key].append(value)
     else:
         d[key] = [value, ]
+
+
+def cosine_to_orientation(iop):
+    """Deduce slicing from cosines
+
+    From http://nipy.org/nibabel/dicom/dicom_orientation.html#dicom-voxel-to
+    -patient-coordinate-system-mapping
+
+    From Section C.7.6.1.1.1 we see that the "positive row axis" is left to
+    right, and is the direction of the rows, given by the direction of last
+    pixel in the first row from the first pixel in that row. Similarly the
+    "positive column axis" is top to bottom and is the direction of the columns,
+    given by the direction of the last pixel in the first column from the first
+    pixel in that column.
+
+    Let's rephrase: the first three values of "Image Orientation Patient" are
+    the direction cosine for the "positive row axis". That is, they express the
+    direction change in (x, y, z), in the DICOM patient coordinate system
+    (DPCS), as you move along the row. That is, as you move from one column to
+    the next. That is, as the column array index changes. Similarly, the second
+    triplet of values of "Image Orientation Patient" (img_ornt_pat[3:] in
+    Python), are the direction cosine for the "positive column axis", and
+    express the direction you move, in the DPCS, as you move from row to row,
+    and therefore as the row index changes.
+
+    Parameters
+    ----------
+    iop: list of float
+       Values of the ImageOrientationPatient field
+
+    Returns
+    -------
+    {'Axial', 'Coronal', 'Sagittal'}
+    """
+    # Solution based on https://stackoverflow.com/a/45469577
+    iop_round = np.round(iop)
+    plane = np.cross(iop_round[0:3], iop_round[3:6])
+    plane = np.abs(plane)
+    if plane[0] == 1:
+        return "Sagittal"
+    elif plane[1] == 1:
+        return "Coronal"
+    elif plane[2] == 1:
+        return "Axial"
+    else:
+        raise RuntimeError(
+            "Could not deduce the image orientation of %r. 'plane' value is %r"
+            % (iop, plane)
+        )
 
 
 def run(args):
@@ -156,6 +206,8 @@ def run(args):
         else:
             description = suffix
             dict_append(image03_dict, 'experiment_id', '')
+        # Shortcut for the global.const section -- apparently might not be flattened fully
+        metadata_const = metadata.get('global', {}).get('const', {})
         dict_append(image03_dict, 'image_description', description)
         dict_append(image03_dict, 'scan_type', suffix_to_scan_type[suffix])
         dict_append(image03_dict, 'scan_object', "Live")
@@ -163,11 +215,20 @@ def run(args):
         dict_append(image03_dict, 'image_modality', "MRI")
         dict_append(image03_dict, 'scanner_manufacturer_pd', metadata.get("Manufacturer", ""))
         dict_append(image03_dict, 'scanner_type_pd', metadata.get("ManufacturersModelName", ""))
-        dict_append(image03_dict, 'scanner_software_versions_pd', metadata.get("HardcopyDeviceSoftwareVersion", ""))
+        dict_append(image03_dict, 'scanner_software_versions_pd', metadata.get("SoftwareVersions", ""))
         dict_append(image03_dict, 'magnetic_field_strength', metadata.get("MagneticFieldStrength", ""))
         dict_append(image03_dict, 'mri_echo_time_pd', metadata.get("EchoTime", ""))
         dict_append(image03_dict, 'flip_angle', metadata.get("FlipAngle", ""))
         dict_append(image03_dict, 'receive_coil', metadata.get("ReceiveCoilName", ""))
+        # ImageOrientationPatientDICOM is populated by recent dcm2niix,
+        # and ImageOrientationPatient might be provided by exhastive metadata
+        # record done by heudiconv
+        iop = metadata.get(
+            'ImageOrientationPatientDICOM',
+            metadata_const.get("ImageOrientationPatient", None)
+        )
+        dict_append(image03_dict, 'image_orientation', cosine_to_orientation(iop) if iop else '')
+
         dict_append(image03_dict, 'transformation_performed', 'Yes')
         dict_append(image03_dict, 'transformation_type', 'BIDS2NDA')
 
@@ -195,6 +256,8 @@ def run(args):
         dict_append(image03_dict, 'image_resolution1', nii.header.get_zooms()[0])
         dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
+        dict_append(image03_dict, 'image_slice_thickness', metadata_const.get("SliceThickness", nii.header.get_zooms()[2]))
+        dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation",""))
         if len(nii.shape) > 3:
             image_resolution4 = nii.header.get_zooms()[3]
         else:
