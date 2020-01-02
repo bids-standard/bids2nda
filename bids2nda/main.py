@@ -345,6 +345,41 @@ def run(args):
             dict_append(image03_dict, 'bvalfile', "")
             dict_append(image03_dict, 'bvek_bval_files', "")
 
+        # comply with image03 changes from 12/30/19
+        # https://nda.nih.gov/data_structure_history.html?short_name=image03
+        
+        dict_append(image03_dict, 'deviceserialnumber', "")
+        dict_append(image03_dict, 'procdate', "")
+        dict_append(image03_dict, 'visnum', "")
+        dict_append(image03_dict, 'manifest', "")
+        dict_append(image03_dict, 'emission_wavelingth', "")
+        dict_append(image03_dict, 'objective_magnification', "")
+        dict_append(image03_dict, 'objective_na', "")
+        dict_append(image03_dict, 'immersion', "")
+        dict_append(image03_dict, 'exposure_time', "")
+        dict_append(image03_dict, 'camera_sn', "")
+        dict_append(image03_dict, 'block_number', "")
+        dict_append(image03_dict, 'level', "")
+        dict_append(image03_dict, 'cut_thickness', "")
+        dict_append(image03_dict, 'stain', "")
+        dict_append(image03_dict, 'stain_details', "")
+        dict_append(image03_dict, 'pipeline_stage', "")
+        dict_append(image03_dict, 'deconvolved', "")
+        dict_append(image03_dict, 'decon_software', "")
+        dict_append(image03_dict, 'decon_method', "")
+        dict_append(image03_dict, 'psf_type', "")
+        dict_append(image03_dict, 'psf_file', "")
+        dict_append(image03_dict, 'decon_snr', "")
+        dict_append(image03_dict, 'decon_iterations', "")
+        dict_append(image03_dict, 'micro_temmplate_name', "")
+        dict_append(image03_dict, 'in_stack', "")
+        dict_append(image03_dict, 'decon_template_name', "")
+        dict_append(image03_dict, 'stack', "")
+        dict_append(image03_dict, 'slices', "")
+        dict_append(image03_dict, 'slice_number', "")
+        dict_append(image03_dict, 'slice_thickness', "")
+        dict_append(image03_dict, 'type_of_microscopy', "")
+
     image03_df = pd.DataFrame(image03_dict)
 
     with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
