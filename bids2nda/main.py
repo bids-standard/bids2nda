@@ -245,6 +245,8 @@ def run(args):
         dict_append(image03_dict, 'image_extent4', image_extent4)
         if suffix == "bold":
             extent4_type = "time"
+        elif description == "epi" and len(nii.shape) == 4:
+            extent4_type = "time"
         elif suffix == "dwi":
             extent4_type = "diffusion weighting"
         else:
