@@ -130,6 +130,7 @@ def run(args):
 
     suffix_to_scan_type = {"dwi": "MR diffusion",
                            "bold": "fMRI",
+                           "sbref": "fMRI",
                            #""MR structural(MPRAGE)",
                            "T1w": "MR structural (T1)",
                            "PD": "MR structural (PD)",
