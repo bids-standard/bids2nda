@@ -193,7 +193,7 @@ def run(args):
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0], 0))*12
+        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0]*12, 0))
         dict_append(image03_dict, 'interview_age', interview_age)
 
         sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
