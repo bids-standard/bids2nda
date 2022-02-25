@@ -98,6 +98,9 @@ def cosine_to_orientation(iop):
     express the direction you move, in the DPCS, as you move from row to row,
     and therefore as the row index changes.
 
+    Notes: 
+        Modified Yarik's original solution from https://stackoverflow.com/a/45469577 to use the argmax for increaesd flexibility.
+
     Parameters
     ----------
     iop: list of float
@@ -107,21 +110,9 @@ def cosine_to_orientation(iop):
     -------
     {'Axial', 'Coronal', 'Sagittal'}
     """
-    # Solution based on https://stackoverflow.com/a/45469577
-    iop_round = np.round(iop)
-    plane = np.cross(iop_round[0:3], iop_round[3:6])
-    plane = np.abs(plane)
-    if plane[0] == 1:
-        return "Sagittal"
-    elif plane[1] == 1:
-        return "Coronal"
-    elif plane[2] == 1:
-        return "Axial"
-    else:
-        raise RuntimeError(
-            "Could not deduce the image orientation of %r. 'plane' value is %r"
-            % (iop, plane)
-        )
+    planes = ['Sagittal', 'Coronal', 'Axial']
+    plane = np.abs(np.cross(np.round(iop[0:3]), np.round(iop[3:6])))
+    return planes[np.argmax(plane)]
 
 
 def run(args):
@@ -204,10 +195,10 @@ def run(args):
         suffix = file.split("_")[-1].split(".")[0]
         if suffix == "bold":
             description = suffix + " " + metadata["TaskName"]
-            dict_append(image03_dict, 'experiment_id', metadata.get("ExperimentID", ""))
+            dict_append(image03_dict, 'experiment_id', args.experiment_id)
         else:
             description = suffix
-            dict_append(image03_dict, 'experiment_id', '')
+            dict_append(image03_dict, 'experiment_id', args.experiment_id)
         # Shortcut for the global.const section -- apparently might not be flattened fully
         metadata_const = metadata.get('global', {}).get('const', {})
         dict_append(image03_dict, 'image_description', description)
@@ -386,9 +377,9 @@ def run(args):
 
     image03_df = pd.DataFrame(image03_dict)
 
-    with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
-        out_fp.write('"image"\t"3"\n')
-        image03_df.to_csv(out_fp, sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    with open(os.path.join(args.output_directory, "image03.csv"), "w") as out_fp:
+        out_fp.write('"image","3"\n')
+        image03_df.to_csv(out_fp, sep=",", index=False, quoting=csv.QUOTE_ALL)
 
 def main():
     class MyParser(argparse.ArgumentParser):
@@ -414,6 +405,11 @@ def main():
         "output_directory",
         help="Directory where NDA files will be stored",
         metavar="OUTPUT_DIRECTORY")
+    parser.add_argument(
+        "experiment_id",
+        help="Experiment ID assigned by NDA for collection. Requred for fMRI studies",
+        metavar='EXPERIMENT_ID')
+    
     args = parser.parse_args()
 
     run(args)
