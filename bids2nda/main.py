@@ -114,7 +114,7 @@ def cosine_to_orientation(iop):
     plane = np.abs(np.cross(np.round(iop[0:3]), np.round(iop[3:6])))
     return planes[np.argmax(plane)]
 
-    
+
 def run(args):
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])

@@ -26,7 +26,7 @@ Extract NIHM Data Archive compatible metadata from Brain Imaging Data Structure 
 
 
 ## GUID_MAPPING file format
-The is the file format produced by the GUID Tool: one line per subject in the format
+The is the file format produced by the GUID Tool: one line per subject in the format:
 
 `<participant_id> - <GUID>`
 
