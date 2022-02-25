@@ -98,6 +98,9 @@ def cosine_to_orientation(iop):
     express the direction you move, in the DPCS, as you move from row to row,
     and therefore as the row index changes.
 
+    Notes: 
+        Modified Yarik's original solution from https://stackoverflow.com/a/45469577 to use the argmax for increaesd flexibility.
+
     Parameters
     ----------
     iop: list of float
@@ -107,23 +110,11 @@ def cosine_to_orientation(iop):
     -------
     {'Axial', 'Coronal', 'Sagittal'}
     """
-    # Solution based on https://stackoverflow.com/a/45469577
-    iop_round = np.round(iop)
-    plane = np.cross(iop_round[0:3], iop_round[3:6])
-    plane = np.abs(plane)
-    if plane[0] == 1:
-        return "Sagittal"
-    elif plane[1] == 1:
-        return "Coronal"
-    elif plane[2] == 1:
-        return "Axial"
-    else:
-        raise RuntimeError(
-            "Could not deduce the image orientation of %r. 'plane' value is %r"
-            % (iop, plane)
-        )
+    planes = ['Sagittal', 'Coronal', 'Axial']
+    plane = np.abs(np.cross(np.round(iop[0:3]), np.round(iop[3:6])))
+    return planes[np.argmax(plane)]
 
-
+    
 def run(args):
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
