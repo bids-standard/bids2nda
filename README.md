@@ -18,7 +18,7 @@ Extract NIHM Data Archive compatible metadata from Brain Imaging Data Structure 
       GUID_MAPPING      Path to a text file with participant_id to GUID mapping.
                         You will need to use the GUID Tool
                         (https://ndar.nih.gov/contribute.html) to generate GUIDs
-                        for your participants.
+                        for your participants. Formatted as  <participant_id> - <GUID>
       OUTPUT_DIRECTORY  Directory where NDA files will be stored
 
     optional arguments:
@@ -29,6 +29,8 @@ Extract NIHM Data Archive compatible metadata from Brain Imaging Data Structure 
 The is the file format produced by the GUID Tool: one line per subject in the format
 
 `<participant_id> - <GUID>`
+
+If your ids are in the format of `sub-sid001420`, be sure to not include 'sub-' in your `<participant_id>` e.g., `<sid001420> - <GUID>`
 
 ## Example outputs
 See [/examples](/examples)
