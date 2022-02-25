@@ -195,10 +195,10 @@ def run(args):
         suffix = file.split("_")[-1].split(".")[0]
         if suffix == "bold":
             description = suffix + " " + metadata["TaskName"]
-            dict_append(image03_dict, 'experiment_id', metadata.get("ExperimentID", ""))
+            dict_append(image03_dict, 'experiment_id', args.experiment_id)
         else:
             description = suffix
-            dict_append(image03_dict, 'experiment_id', '')
+            dict_append(image03_dict, 'experiment_id', args.experiment_id)
         # Shortcut for the global.const section -- apparently might not be flattened fully
         metadata_const = metadata.get('global', {}).get('const', {})
         dict_append(image03_dict, 'image_description', description)
@@ -405,6 +405,11 @@ def main():
         "output_directory",
         help="Directory where NDA files will be stored",
         metavar="OUTPUT_DIRECTORY")
+    parser.add_argument(
+        "experiment_id",
+        help="Experiment ID assigned by NDA for collection. Requred for fMRI studies",
+        metavar='EXPERIMENT_ID')
+    
     args = parser.parse_args()
 
     run(args)

@@ -20,6 +20,7 @@ Extract NIHM Data Archive compatible metadata from Brain Imaging Data Structure 
                         (https://ndar.nih.gov/contribute.html) to generate GUIDs
                         for your participants. Formatted as  <participant_id> - <GUID>
       OUTPUT_DIRECTORY  Directory where NDA files will be stored
+      EXPERIMENT_ID     experiment_id value assigned from NDA after setting the study up throught the NDA website (int)
 
     optional arguments:
       -h, --help        show this help message and exit
