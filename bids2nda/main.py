@@ -377,9 +377,9 @@ def run(args):
 
     image03_df = pd.DataFrame(image03_dict)
 
-    with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
-        out_fp.write('"image"\t"3"\n')
-        image03_df.to_csv(out_fp, sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    with open(os.path.join(args.output_directory, "image03.csv"), "w") as out_fp:
+        out_fp.write('"image","3",')
+        image03_df.to_csv(out_fp, sep=",", index=False, quoting=csv.QUOTE_ALL)
 
 def main():
     class MyParser(argparse.ArgumentParser):
