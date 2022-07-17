@@ -1,5 +1,5 @@
 # BIDS2NDA
-Extract NIHM Data Archive compatible metadata from Brain Imaging Data Structure compatible datasets
+Extract NIMH Data Archive compatible metadata from Brain Imaging Data Structure (BIDS) compatible datasets
 
 ## Installation
 
@@ -26,7 +26,7 @@ Extract NIHM Data Archive compatible metadata from Brain Imaging Data Structure 
 
 
 ## GUID_MAPPING file format
-The is the file format produced by the GUID Tool: one line per subject in the format
+The is the file format produced by the GUID Tool, one line per subject in the format:
 
 `<participant_id> - <GUID>`
 
@@ -34,5 +34,5 @@ The is the file format produced by the GUID Tool: one line per subject in the fo
 See [/examples](/examples)
 
 ## Notes:
-Column experiment_id must be manually filled in for now.
-This is based on experiment ID's received from NDA after setting the study up through the NDA website [here](https://ndar.nih.gov/user/dashboard/collections.html).
+Column `'experiment_id'` must be manually filled in for now.
+This is based on experiment IDs received from NDA after setting the study up through the NDA website [here](https://ndar.nih.gov/user/dashboard/collections.html).
