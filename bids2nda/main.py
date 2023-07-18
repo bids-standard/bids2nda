@@ -191,7 +191,7 @@ def run(args):
             sys.exit(-1)
 
         if 'filename' not in scans_df.columns or 'acq_time' not in scans_df.columns:
-            raise Exception(f"{scans_file} must have columns 'filename' and 'acq_time' to create 'interview_date' nda column'")
+            raise Exception(f"{scans_file} must have columns 'filename' and 'acq_time' (YYYY-MM-DD) to create 'interview_date' nda column'")
 
         for (_, row) in scans_df.iterrows():
             if file.endswith(row["filename"].replace("/", os.sep)):
@@ -313,6 +313,9 @@ def run(args):
         if len(metadata) > 0 or suffix in ['bold', 'dwi']:
             _, fname = os.path.split(file)
             zip_name = fname.split(".")[0] + ".metadata.zip"
+
+            os.makedirs(args.output_directory, exist_ok=True)
+
             with zipfile.ZipFile(os.path.join(args.output_directory, zip_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
 
                 zipf.writestr(fname.replace(".nii.gz", ".json"), json.dumps(metadata, indent=4, sort_keys=True))
