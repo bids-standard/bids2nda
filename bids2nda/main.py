@@ -161,7 +161,11 @@ def run(args):
                   "sec": "Seconds",
                   "msec": "Milliseconds"}
 
-    participants_df = pd.read_csv(os.path.join(args.bids_directory, "participants.tsv"), header=0, sep="\t")
+    participants_file = os.path.join(args.bids_directory, "participants.tsv")
+    participants_df = pd.read_csv(participants_file, header=0, sep="\t")
+    if 'age' not in participants_df.columns or 'sex' not in participants_df.columns:
+        raise Exception(f"{participants_file} must have columns 'age' and 'sex' for nda columns 'interview_age' and 'sex'")
+
 
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
@@ -185,6 +189,10 @@ def run(args):
         else:
             print("%s file not found - information about scan date required by NDA could not be found." % scans_file)
             sys.exit(-1)
+
+        if 'filename' not in scans_df.columns or 'acq_time' not in scans_df.columns:
+            raise Exception(f"{scans_file} must have columns 'filename' and 'acq_time' to create 'interview_date' nda column'")
+
         for (_, row) in scans_df.iterrows():
             if file.endswith(row["filename"].replace("/", os.sep)):
                 date = row.acq_time
@@ -194,10 +202,14 @@ def run(args):
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        interview_age = int(round(list(participants_df[participants_df.participant_id == "sub-" + sub].age)[0]*12, 0))
+        this_subj = participants_df[participants_df.participant_id == "sub-" + sub]
+        if this_subj.shape[0] == 0:
+            raise Exception(f"{participants_file} must have row with particiapnt_id = 'sub-{sub}'")
+
+        interview_age = int(round(list(this_subj.age)[0]*12, 0))
         dict_append(image03_dict, 'interview_age', interview_age)
 
-        sex = list(participants_df[participants_df.participant_id == "sub-" + sub].sex)[0]
+        sex = list(this_subj.sex)[0]
         dict_append(image03_dict, 'gender', sex)
 
         dict_append(image03_dict, 'image_file', file)
