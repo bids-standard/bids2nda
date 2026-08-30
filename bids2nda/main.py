@@ -20,7 +20,7 @@ import numpy as np
 
 # Gather our code in a main() function
 from shutil import copy
-
+from .experiment_id import read_experiment_lookup, eid_of_filename
 
 def get_metadata_for_nifti(bids_root, path):
 
@@ -157,9 +157,11 @@ def run(args):
                            #X - Ray
                            }
 
+    # nibabel.data_dir / "standard.nii.gz" reports "unknown" xyzt unit types
     units_dict = {"mm": "Millimeters",
                   "sec": "Seconds",
-                  "msec": "Milliseconds"}
+                  "msec": "Milliseconds",
+                  "unknown": "Unknown"}
 
     participants_file = os.path.join(args.bids_directory, "participants.tsv")
     participants_df = pd.read_csv(participants_file, header=0, sep="\t")
@@ -221,6 +223,12 @@ def run(args):
         else:
             description = suffix
             dict_append(image03_dict, 'experiment_id', '')
+
+        # overwrite last experiment_id if we have a EID lookup file and a pattern match
+        if args.experimentid_tsv is not None and not image03_dict['experiment_id'][-1]:
+            if eid := eid_of_filename(args.experimentid_tsv, file):
+                image03_dict['experiment_id'][-1] = eid
+
         # Shortcut for the global.const section -- apparently might not be flattened fully
         metadata_const = metadata.get('global', {}).get('const', {})
         dict_append(image03_dict, 'image_description', description)
@@ -281,9 +289,14 @@ def run(args):
             image_resolution4 = ""
         dict_append(image03_dict, 'image_resolution4', image_resolution4)
 
-        dict_append(image03_dict, 'image_unit1', units_dict[nii.header.get_xyzt_units()[0]])
-        dict_append(image03_dict, 'image_unit2', units_dict[nii.header.get_xyzt_units()[0]])
-        dict_append(image03_dict, 'image_unit3', units_dict[nii.header.get_xyzt_units()[0]])
+        # TODO: use units for each dim? Will 1-3 ever not be same type?
+        unit_type = units_dict.get(nii.header.get_xyzt_units()[0], 'Unknown')
+        if unit_type == 'Unknown':
+            print(f"WARNING: xyzt unit type of {file} is {unit_type}")
+
+        dict_append(image03_dict, 'image_unit1', unit_type)
+        dict_append(image03_dict, 'image_unit2', unit_type)
+        dict_append(image03_dict, 'image_unit3', unit_type)
         if len(nii.shape) > 3:
             image_unit4 = units_dict[nii.header.get_xyzt_units()[1]]
             if image_unit4 == "Milliseconds":
@@ -430,7 +443,16 @@ def main():
         "output_directory",
         help="Directory where NDA files will be stored",
         metavar="OUTPUT_DIRECTORY")
+    parser.add_argument(
+        '--experimentid_tsv',
+        type=str,
+        default=None,
+        help='Path to TSV file w/cols  ExperimentID and Pattern for NDA EID lookup')
+
     args = parser.parse_args()
+
+    if args.experimentid_tsv:
+        args.experimentid_tsv = read_experiment_lookup(args.experimentid_tsv)
 
     run(args)
     print("Metadata extraction complete.")
