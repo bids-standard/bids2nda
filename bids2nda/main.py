@@ -274,7 +274,23 @@ def run(args):
         dict_append(image03_dict, 'image_resolution2', nii.header.get_zooms()[1])
         dict_append(image03_dict, 'image_resolution3', nii.header.get_zooms()[2])
         dict_append(image03_dict, 'image_slice_thickness', metadata_const.get("SliceThickness", nii.header.get_zooms()[2]))
-        dict_append(image03_dict, 'photomet_interpret', metadata.get("global",{}).get("const",{}).get("PhotometricInterpretation",""))
+
+        # 20250715: PhotometricInterpretation is required if not DICOM
+        #  all DICOM's LNCD/WF want to upload report MONOCRHOME2
+        #  https://dicom.innolitics.com/ciods/rt-dose/image-pixel/00280004
+        #  MONOCHROME2:
+        #  > Pixel data represent a single monochrome image plane.
+        #  > The minimum sample value is intended to be displayed as black after any VOI gray
+        #  > scale transformations have been performed.
+        # also see https://docs.ccv.brown.edu/bnc-user-manual/bids/bids-to-nimh-data-archive-nda
+        photomet = metadata_const.get("PhotometricInterpretation","")
+        if not photomet and suffix in ['dwi', 'bold', 'T1w', 'T2w', 'sbref', 'epi', 'UNIT1']:
+            photomet = 'MONOCHROME2'
+        if not photomet:
+            print(f"WARNING: PhotometricInterpretation not in metadata and unknown for {suffix} ({file})")
+        dict_append(image03_dict, 'photomet_interpret', photomet)
+
+
         if len(nii.shape) > 3:
             image_resolution4 = nii.header.get_zooms()[3]
         else:
