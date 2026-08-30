@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#
 
-# import modules used here -- sys is a very standard one
 from __future__ import print_function
 import argparse
 import csv
@@ -11,6 +9,7 @@ from collections import OrderedDict
 from glob import glob
 import os
 import sys
+import re
 
 import nibabel as nb
 import json
@@ -18,8 +17,52 @@ import pandas as pd
 import numpy as np
 
 
-# Gather our code in a main() function
-from shutil import copy
+def sub_from_file(path: str) -> str | None:
+    """Quick subj extraction from file path. """
+    if m := re.search(r'sub-([^_/-]*)', path):
+        return m.group(0)
+    return None
+
+
+def read_participant_info(bids_directory: os.PathLike) -> pd.DataFrame:
+    """ Build DataFrame for age and sex
+    Default to values in sessions.tsv
+       but use participants.tsv if not (outer merge).
+    """
+    participants_file = os.path.join(bids_directory, "participants.tsv")
+    participants_df = pd.read_csv(participants_file, header=0, sep="\t")
+
+    sessions_files = glob(os.path.join(bids_directory, "sub-*", "*_sessions.tsv"))
+
+    if len(sessions_files) > 0:
+        sessions_df = pd.concat((pd.read_csv(f, sep="\t").
+                                    assign(participant_id=sub_from_file(f))
+                                 for f in sessions_files), ignore_index=True)
+
+        participants_df = sessions_df.merge(participants_df,
+                                            how='outer',  # use everything
+                                            on='participant_id',
+                                            suffixes=('', '_part'))
+    if 'age' not in participants_df.columns or 'sex' not in participants_df.columns:
+        raise Exception(f"{participants_file} or sub-*/sessions.tsv must have columns 'age' and 'sex' for nda columns 'interview_age' and 'sex'")
+
+    return participants_df
+
+
+def read_scan_date(scans_file: str, file: str) -> str:
+    """Extract acq_time from scan_file.
+    Find row where filename column value matches ``file``"""
+    if not os.path.exists(scans_file):
+        print("%s file not found - information about scan date required by NDA could not be found. Alternatively, information could be stored in sessions.tsv" % scans_file)
+        sys.exit(-1)
+    scans_df = pd.read_csv(scans_file, header=0, sep="\t")
+    if 'filename' not in scans_df.columns or 'acq_time' not in scans_df.columns:
+        raise Exception(f"{scans_file} must have columns 'filename' and 'acq_time' (YYYY-MM-DD) to create 'interview_date' nda column'")
+
+    for (_, row) in scans_df.iterrows():
+        if file.endswith(row["filename"].replace("/", os.sep)):
+            return row.acq_time
+    raise Exception(f"no row where filename={file} in {scans_file}")
 
 
 def get_metadata_for_nifti(bids_root, path):
@@ -124,7 +167,7 @@ def cosine_to_orientation(iop):
         )
 
 
-def run(args):
+def run(args) -> pd.DataFrame:
 
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
 
@@ -161,11 +204,7 @@ def run(args):
                   "sec": "Seconds",
                   "msec": "Milliseconds"}
 
-    participants_file = os.path.join(args.bids_directory, "participants.tsv")
-    participants_df = pd.read_csv(participants_file, header=0, sep="\t")
-    if 'age' not in participants_df.columns or 'sex' not in participants_df.columns:
-        raise Exception(f"{participants_file} must have columns 'age' and 'sex' for nda columns 'interview_age' and 'sex'")
-
+    participants_df = read_participant_info(args.bids_directory)
 
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
@@ -178,33 +217,39 @@ def run(args):
         dict_append(image03_dict, 'src_subject_id', bids_subject_id)
 
         sub = file.split("sub-")[-1].split("_")[0]
+        date = None  # initialization. set by sessions.tsv or _scans.tsv
         if "ses-" in file:
             ses = file.split("ses-")[-1].split("_")[0]
             scans_file = (os.path.join(args.bids_directory, "sub-" + sub, "ses-" + ses, "sub-" + sub + "_ses-" + ses + "_scans.tsv"))
+
+            this_subj = participants_df[participants_df.participant_id == "sub-" + sub]
+            this_subj = this_subj[this_subj.session_id == 'ses-' + ses]
+            if this_subj.shape[0] == 0:
+                raise Exception(f"{args.bids_directory}/sub-{sub}/sub-{ses}_sessions.tsv must have row with session_id = ses-{ses}")
+            if 'acq_time' in this_subj.columns:
+                date = this_subj.acq_time.tolist()[0]
         else:
+            ses = None
             scans_file = (os.path.join(args.bids_directory, "sub-" + sub, "sub-" + sub + "_scans.tsv"))
 
-        if os.path.exists(scans_file):
-            scans_df = pd.read_csv(scans_file, header=0, sep="\t")
-        else:
-            print("%s file not found - information about scan date required by NDA could not be found." % scans_file)
-            sys.exit(-1)
+            this_subj = participants_df[participants_df.participant_id == "sub-" + sub]
+            if this_subj.shape[0] == 0:
+                raise Exception(f"{args.bids_directory}/participants.tsv must have row with participant_id = 'sub-{sub}'")
 
-        if 'filename' not in scans_df.columns or 'acq_time' not in scans_df.columns:
-            raise Exception(f"{scans_file} must have columns 'filename' and 'acq_time' (YYYY-MM-DD) to create 'interview_date' nda column'")
+        # TODO: should be fatal error?
+        if this_subj.shape[0] != 1:
+            print(f"WARNING: {this_subj.shape[0]} matching rows for sub-{sub} (ses={ses}). Check participants.tsv and sessions.tsv for duplicates")
 
-        for (_, row) in scans_df.iterrows():
-            if file.endswith(row["filename"].replace("/", os.sep)):
-                date = row.acq_time
-                break
+        # only already defined if in sessions.tsv
+        # if we have the file, allow it to overwrite sessions.tsv
+        # e.g. maybe collected mprage on different day from rest
+        if not date or os.path.isfile(scans_file):
+            date = read_scan_date(scans_file, file)
 
         sdate = date.split("-")
         ndar_date = sdate[1] + "/" + sdate[2].split("T")[0] + "/" + sdate[0]
         dict_append(image03_dict, 'interview_date', ndar_date)
 
-        this_subj = participants_df[participants_df.participant_id == "sub-" + sub]
-        if this_subj.shape[0] == 0:
-            raise Exception(f"{participants_file} must have row with particiapnt_id = 'sub-{sub}'")
 
         interview_age = int(round(list(this_subj.age)[0]*12, 0))
         dict_append(image03_dict, 'interview_age', interview_age)
@@ -402,21 +447,23 @@ def run(args):
 
     image03_df = pd.DataFrame(image03_dict)
 
-    with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
-        out_fp.write('"image"\t"3"\n')
-        image03_df.to_csv(out_fp, sep="\t", index=False, quoting=csv.QUOTE_ALL)
+    return image03_df
 
-def main():
-    class MyParser(argparse.ArgumentParser):
-        def error(self, message):
-            sys.stderr.write('error: %s\n' % message)
-            self.print_help()
-            sys.exit(2)
 
+class MyParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
+def parse_args(argv:list[str]|None=None):
+    """
+    argv None to read from sys.argv
+    """
     parser = MyParser(
         description="BIDS to NDA converter.",
         fromfile_prefix_chars='@')
-    # TODO Specify your real parameters here.
     parser.add_argument(
         "bids_directory",
         help="Location of the root of your BIDS compatible directory",
@@ -430,9 +477,18 @@ def main():
         "output_directory",
         help="Directory where NDA files will be stored",
         metavar="OUTPUT_DIRECTORY")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
 
-    run(args)
+
+def main():
+
+    args = parse_args()
+    image03_df = run(args)
+
+    with open(os.path.join(args.output_directory, "image03.txt"), "w") as out_fp:
+        out_fp.write('"image"\t"3"\n')
+        image03_df.to_csv(out_fp, sep="\t", index=False, quoting=csv.QUOTE_ALL)
+
     print("Metadata extraction complete.")
 
 
