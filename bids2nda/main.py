@@ -126,8 +126,46 @@ def cosine_to_orientation(iop):
 
 def run(args):
 
+    # Load GUID mapping
     guid_mapping = dict([line.split(" - ") for line in open(args.guid_mapping).read().split("\n") if line != ''])
 
+    # Normalize GUID mapping keys by removing 'sub-' if present
+    guid_mapping = {key.replace('sub-', ''): value for key, value in guid_mapping.items()}
+
+    # Load participants file
+    participants_file = os.path.join(args.bids_directory, "participants.tsv")
+    participants_df = pd.read_csv(participants_file, header=0, sep="\t")
+
+    # Check if required columns exist
+    if 'age' not in participants_df.columns or 'sex' not in participants_df.columns:
+        raise Exception(f"{participants_file} must have columns 'age' and 'sex' for nda columns 'interview_age' and 'sex'")
+        
+    # Extract subject list from participant IDs
+    all_subjects = [sub.replace('sub-', '') for sub in participants_df['participant_id']]
+    
+    # Check which subjects are actually present in GUID mapping
+    missing_subjects = []
+    valid_subjects = []
+    for bids_subject_id in all_subjects:
+        # Ensure 'sub-' prefix is handled consistently
+        stripped_subject_id = bids_subject_id.replace('sub-', '')
+        
+        if stripped_subject_id not in guid_mapping:
+            missing_subjects.append(bids_subject_id)
+        else:
+            valid_subjects.append(bids_subject_id)
+
+    # Handle missing subjects based on strictness
+    if missing_subjects:
+        if args.strictness == 'strict':
+            raise ValueError(f"The following subjects are missing from GUID mapping: {missing_subjects}")
+        elif args.strictness == 'warn':
+            print(f"WARNING: The following subjects are missing from GUID mapping: {missing_subjects}")
+            print("Continuing with available subjects.")
+
+    # Use only valid subjects
+    all_subjects = valid_subjects
+    
     suffix_to_scan_type = {"dwi": "MR diffusion",
                            "bold": "fMRI",
                            "sbref": "fMRI",
@@ -161,21 +199,15 @@ def run(args):
                   "sec": "Seconds",
                   "msec": "Milliseconds"}
 
-    participants_file = os.path.join(args.bids_directory, "participants.tsv")
-    participants_df = pd.read_csv(participants_file, header=0, sep="\t")
-    if 'age' not in participants_df.columns or 'sex' not in participants_df.columns:
-        raise Exception(f"{participants_file} must have columns 'age' and 'sex' for nda columns 'interview_age' and 'sex'")
-
-
     image03_dict = OrderedDict()
     for file in glob(os.path.join(args.bids_directory, "sub-*", "*", "sub-*.nii.gz")) + \
             glob(os.path.join(args.bids_directory, "sub-*", "ses-*", "*", "sub-*_ses-*.nii.gz")):
-
         metadata = get_metadata_for_nifti(args.bids_directory, file)
 
+        # Extract subject ID; note that "4:" will remove 'sub-'
         bids_subject_id = os.path.split(file)[-1].split("_")[0][4:]
         dict_append(image03_dict, 'subjectkey', guid_mapping[bids_subject_id])
-        dict_append(image03_dict, 'src_subject_id', bids_subject_id)
+        dict_append(image03_dict, 'src_subject_id', 'sub-' + bids_subject_id)
 
         sub = file.split("sub-")[-1].split("_")[0]
         if "ses-" in file:
@@ -372,7 +404,7 @@ def run(args):
         dict_append(image03_dict, 'procdate', "")
         dict_append(image03_dict, 'visnum', "")
         dict_append(image03_dict, 'manifest', "")
-        dict_append(image03_dict, 'emission_wavelingth', "")
+        dict_append(image03_dict, 'emission_wavelength', "")
         dict_append(image03_dict, 'objective_magnification', "")
         dict_append(image03_dict, 'objective_na', "")
         dict_append(image03_dict, 'immersion', "")
@@ -430,10 +462,30 @@ def main():
         "output_directory",
         help="Directory where NDA files will be stored",
         metavar="OUTPUT_DIRECTORY")
+    parser.add_argument('--strictness', 
+                        choices=['strict', 'warn', 'ignore'], 
+                        default='strict',
+                        help='How to handle missing subjects. '
+                             'strict: raise an error, '
+                             'warn: print a warning and continue, '
+                             'ignore: silently skip missing subjects')
     args = parser.parse_args()
 
-    run(args)
+    try:
+        run(args)
+    except Exception as e:
+        import sys
+        import traceback
+        print("An error occurred during metadata extraction:", file=sys.stderr)
+        print("-" * 50, file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)  # Prints full traceback to stderr
+        print("-" * 50, file=sys.stderr)
+        print(f"Error type: {type(e)}", file=sys.stderr)
+        print(f"Error details: {e}", file=sys.stderr)
+        return 1    
+    
     print("Metadata extraction complete.")
+    return 0
 
 
 if __name__ == '__main__':
